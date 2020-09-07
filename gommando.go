@@ -79,6 +79,7 @@ func (g *Gommando) Run() {
 	}
 
 	g.cmd.Run()
+
 	for _, c := range g.chains {
 		c.Close()
 	}

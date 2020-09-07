@@ -22,9 +22,9 @@ func main() {
 	})
 
 	g.Stdout().Every(func(haystack string) bool {
-		return strings.Index(haystack, "icmp_seq=") > 0
+		return strings.Index(haystack, "seq=") > 0
 	}).Then(func(s string) {
-		println("found 'icmp_seq=' seen and I continue to say this because I'm after .Every")
+		println("found 'seq=' seen and I continue to say this because I'm after .Every")
 	})
 
 	g.Run()

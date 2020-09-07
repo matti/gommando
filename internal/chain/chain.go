@@ -20,50 +20,22 @@ type Chain struct {
 	reader *io.PipeReader
 
 	Stream *dynamicmultiwriter.DynamicMultiWriter
-	done   chan (bool)
-}
-
-func (c *Chain) kind() string {
-	if c.prev == nil {
-		return "start"
-	} else if c.then != nil {
-		return "then"
-	} else if c.once != nil {
-		return "once"
-	} else if c.every != nil {
-		return "every"
-	} else {
-		return "end"
-	}
+	wg     sync.WaitGroup
 }
 
 // Start ...
 func (c *Chain) Start() {
-	next := c.next
+	defer func() {
+		c.wg.Done()
+	}()
 
-	if next == nil {
-		println("next would be nil")
-		c.done <- true
+	c.wg.Add(1)
+
+	if c.next == nil {
 		return
 	}
 
-	go func() {
-		defer func() {
-			next.done <- true
-			c.done <- true
-		}()
-
-		switch next.kind() {
-		case "once":
-			next.once()
-		case "every":
-			next.every()
-		case "then":
-			next.then("")
-		default:
-			panic("can not start " + next.kind())
-		}
-	}()
+	go c.next.fire("")
 }
 
 // Close ...
@@ -72,7 +44,8 @@ func (c *Chain) Close() {
 		c.next.Close()
 	}
 	c.writer.Close()
-	<-c.done
+
+	c.wg.Wait()
 }
 
 // New ...
@@ -85,7 +58,7 @@ func New(stream *dynamicmultiwriter.DynamicMultiWriter, prev *Chain, next *Chain
 		next:   next,
 		writer: w,
 		reader: r,
-		done:   make(chan bool, 2), // TODO: why 2+?
+		wg:     sync.WaitGroup{},
 	}
 }
 
@@ -167,11 +140,12 @@ func (c *Chain) Then(fn func(s string)) *Chain {
 	return c.next
 }
 
-// Fire ...
 func (c *Chain) fire(s string) {
 	defer func() {
-		c.done <- true
+		c.wg.Done()
 	}()
+
+	c.wg.Add(1)
 
 	switch c.kind() {
 	case "then":
@@ -183,8 +157,19 @@ func (c *Chain) fire(s string) {
 		c.once()
 	case "every":
 		c.every()
-	case "end":
-	default:
-		panic("what am I?")
+	}
+}
+
+func (c *Chain) kind() string {
+	if c.prev == nil {
+		return "start"
+	} else if c.then != nil {
+		return "then"
+	} else if c.once != nil {
+		return "once"
+	} else if c.every != nil {
+		return "every"
+	} else {
+		panic("What am I?")
 	}
 }
