@@ -1,8 +1,10 @@
 # gommando
 
-[examples/ping/main.go](examples/ping/main.go)
+Run any command and run hooks when the output (stdout, stderr or stdboth) matches
 
-outputs:
+See [examples/ping/main.go](examples/ping/main.go)
+
+which outputs:
 ```
 $ go run examples/ping/main.go
 PING google.com (172.217.20.46): 56 data bytes
@@ -25,3 +27,7 @@ found 'icmp_seq=' seen and I continue to say this because I'm after .Every
 5 packets transmitted, 5 packets received, 0.0% packet loss
 round-trip min/avg/max/stddev = 18.994/22.524/26.538/3.037 ms
 ```
+
+## More examples
+
+See [examples/](examples/)

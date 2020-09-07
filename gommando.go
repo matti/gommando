@@ -22,6 +22,10 @@ func New(cmd string) *Gommando {
 	g := &Gommando{}
 	g.stdout = dynamicmultiwriter.New()
 	g.stderr = dynamicmultiwriter.New()
+	g.stdboth = dynamicmultiwriter.New()
+
+	g.stdout.Add(g.stdboth)
+	g.stderr.Add(g.stdboth)
 
 	g.Output(true)
 
