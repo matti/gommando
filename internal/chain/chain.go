@@ -1,4 +1,4 @@
-package gommando
+package chain
 
 import (
 	"io"
@@ -6,33 +6,42 @@ import (
 	"github.com/matti/dynamicmultiwriter"
 )
 
+// Chain ...
 type Chain struct {
 	then  func(s string)
 	once  func()
 	every func()
 
-	stdout *dynamicmultiwriter.DynamicMultiWriter
+	stream *dynamicmultiwriter.DynamicMultiWriter
 	prev   *Chain
 	next   *Chain
 }
 
-func (c *Chain) Once(needleFn func(haystack string) bool) *Chain {
-	c.next = &Chain{
-		stdout: c.stdout,
-		prev:   c,
+// New ...
+func New(stream *dynamicmultiwriter.DynamicMultiWriter, prev *Chain, next *Chain) *Chain {
+	return &Chain{
+		stream: stream,
+		prev:   prev,
+		next:   next,
 	}
+}
+
+// Once ...
+func (c *Chain) Once(needleFn func(haystack string) bool) *Chain {
+	c.next = New(c.stream, c, nil)
 
 	c.once = func() {
 		r, w := io.Pipe()
-		c.stdout.Add(w)
-
 		defer w.Close()
+
+		c.stream.Add(w)
+
 		b := make([]byte, 4<<20)
 		for {
 			r.Read(b)
 			if needleFn(string(b)) {
-				c.next.Fire(string(b))
-				c.stdout.Remove(w)
+				c.next.fire(string(b))
+				c.stream.Remove(w)
 				return
 			}
 		}
@@ -48,23 +57,22 @@ func (c *Chain) Once(needleFn func(haystack string) bool) *Chain {
 	return c.next
 }
 
+// Every ...
 func (c *Chain) Every(needleFn func(haystack string) bool) *Chain {
-	c.next = &Chain{
-		stdout: c.stdout,
-		prev:   c,
-	}
+	c.next = New(c.stream, c, nil)
 
 	c.every = func() {
 		r, w := io.Pipe()
-		c.stdout.Add(w)
-
 		defer w.Close()
+
+		c.stream.Add(w)
+
 		b := make([]byte, 4<<20)
 		for {
 			r.Read(b)
 
 			if needleFn(string(b)) {
-				go c.next.Fire(string(b))
+				go c.next.fire(string(b))
 			}
 		}
 	}
@@ -79,23 +87,21 @@ func (c *Chain) Every(needleFn func(haystack string) bool) *Chain {
 	return c.next
 }
 
-func (c *Chain) Fire(s string) {
+// Then ...
+func (c *Chain) Then(fn func(s string)) *Chain {
+	c.then = fn
+	c.next = New(c.stream, c, nil)
+
+	return c.next
+}
+
+func (c *Chain) fire(s string) {
 	if c.then != nil {
 		c.then(s)
-		c.next.Fire(s)
+		c.next.fire(s)
 	} else if c.once != nil {
 		c.once()
 	} else if c.every != nil {
 		c.every()
 	}
-}
-
-func (c *Chain) Then(fn func(s string)) *Chain {
-	c.then = fn
-	c.next = &Chain{
-		stdout: c.stdout,
-		prev:   c,
-	}
-
-	return c.next
 }
