@@ -32,6 +32,7 @@ func (c *Chain) Once(needleFn func(haystack string) bool) *Chain {
 			r.Read(b)
 			if needleFn(string(b)) {
 				c.next.Fire(string(b))
+				c.stdout.Remove(w)
 				return
 			}
 		}
