@@ -2,6 +2,7 @@ package chain
 
 import (
 	"io"
+	"sync"
 
 	"github.com/matti/dynamicmultiwriter"
 )
@@ -12,46 +13,110 @@ type Chain struct {
 	once  func()
 	every func()
 
-	stream *dynamicmultiwriter.DynamicMultiWriter
-	prev   *Chain
-	next   *Chain
+	prev *Chain
+	next *Chain
+
+	writer *io.PipeWriter
+	reader *io.PipeReader
+
+	Stream *dynamicmultiwriter.DynamicMultiWriter
+	done   chan (bool)
+}
+
+func (c *Chain) kind() string {
+	if c.prev == nil {
+		return "start"
+	} else if c.then != nil {
+		return "then"
+	} else if c.once != nil {
+		return "once"
+	} else if c.every != nil {
+		return "every"
+	} else {
+		return "end"
+	}
+}
+
+// Start ...
+func (c *Chain) Start() {
+	next := c.next
+
+	if next == nil {
+		println("next would be nil")
+		c.done <- true
+		return
+	}
+
+	go func() {
+		defer func() {
+			next.done <- true
+			c.done <- true
+		}()
+
+		switch next.kind() {
+		case "once":
+			next.once()
+		case "every":
+			next.every()
+		case "then":
+			next.then("")
+		default:
+			panic("can not start " + next.kind())
+		}
+	}()
+}
+
+// Close ...
+func (c *Chain) Close() {
+	if c.next != nil {
+		c.next.Close()
+	}
+	c.writer.Close()
+	<-c.done
 }
 
 // New ...
 func New(stream *dynamicmultiwriter.DynamicMultiWriter, prev *Chain, next *Chain) *Chain {
+	r, w := io.Pipe()
+
 	return &Chain{
-		stream: stream,
+		Stream: stream,
 		prev:   prev,
 		next:   next,
+		writer: w,
+		reader: r,
+		done:   make(chan bool, 2), // TODO: why 2+?
 	}
 }
 
 // Once ...
 func (c *Chain) Once(needleFn func(haystack string) bool) *Chain {
-	c.next = New(c.stream, c, nil)
+	c.next = New(c.Stream, c, nil)
+	c.next.once = func() {
+		defer func() {
+			c.next.Stream.Remove(c.next.writer)
+		}()
 
-	c.once = func() {
-		r, w := io.Pipe()
-		defer w.Close()
+		c.next.Stream.Add(c.next.writer)
 
-		c.stream.Add(w)
-
-		b := make([]byte, 4<<20)
 		for {
-			r.Read(b)
+			// TODO: stdboth fails unless inside of for, why?
+			b := make([]byte, 4<<20)
+			_, err := c.next.reader.Read(b)
+
+			if err == io.EOF {
+				return
+			} else if err != nil {
+				panic(err)
+			}
+
 			if needleFn(string(b)) {
-				c.next.fire(string(b))
-				c.stream.Remove(w)
+				if c.next.next != nil {
+					c.next.next.fire(string(b))
+				}
 				return
 			}
 		}
-	}
-
-	// start this if we are the first in chain
-	if c.prev == nil {
-		go func() {
-			c.once()
-		}()
 	}
 
 	return c.next
@@ -59,29 +124,36 @@ func (c *Chain) Once(needleFn func(haystack string) bool) *Chain {
 
 // Every ...
 func (c *Chain) Every(needleFn func(haystack string) bool) *Chain {
-	c.next = New(c.stream, c, nil)
+	c.next = New(c.Stream, c, nil)
+	c.next.every = func() {
+		wg := sync.WaitGroup{}
 
-	c.every = func() {
-		r, w := io.Pipe()
-		defer w.Close()
+		defer func() {
+			wg.Wait()
+			c.next.Stream.Remove(c.next.writer)
+		}()
 
-		c.stream.Add(w)
+		c.next.Stream.Add(c.next.writer)
 
-		b := make([]byte, 4<<20)
 		for {
-			r.Read(b)
+			b := make([]byte, 4<<20)
+			_, err := c.next.reader.Read(b)
+			if err == io.EOF {
+				return
+			} else if err != nil {
+				panic(err)
+			}
 
 			if needleFn(string(b)) {
-				go c.next.fire(string(b))
+				wg.Add(1)
+				go func() {
+					if c.next.next != nil {
+						c.next.next.fire(string(b))
+					}
+					wg.Done()
+				}()
 			}
 		}
-	}
-
-	// start this if we are the first in chain
-	if c.prev == nil {
-		go func() {
-			c.every()
-		}()
 	}
 
 	return c.next
@@ -89,19 +161,30 @@ func (c *Chain) Every(needleFn func(haystack string) bool) *Chain {
 
 // Then ...
 func (c *Chain) Then(fn func(s string)) *Chain {
-	c.then = fn
-	c.next = New(c.stream, c, nil)
+	c.next = New(c.Stream, c, nil)
+	c.next.then = fn
 
 	return c.next
 }
 
+// Fire ...
 func (c *Chain) fire(s string) {
-	if c.then != nil {
+	defer func() {
+		c.done <- true
+	}()
+
+	switch c.kind() {
+	case "then":
 		c.then(s)
-		c.next.fire(s)
-	} else if c.once != nil {
+		if c.next != nil {
+			c.next.fire(s)
+		}
+	case "once":
 		c.once()
-	} else if c.every != nil {
+	case "every":
 		c.every()
+	case "end":
+	default:
+		panic("what am I?")
 	}
 }

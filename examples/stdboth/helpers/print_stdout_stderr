@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+>&2 echo "stderr"
+echo "stdout"

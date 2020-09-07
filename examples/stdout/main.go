@@ -1,8 +1,6 @@
 package main
 
 import (
-	"time"
-
 	"github.com/matti/gommando"
 )
 
@@ -13,10 +11,8 @@ func main() {
 	g.Stdout().Once(func(haystack string) bool {
 		return true
 	}).Then(func(s string) {
-		println("found ", s)
+		println("got ", s)
 	})
 
 	g.Run()
-	// TODO:
-	time.Sleep(time.Second * 1)
 }

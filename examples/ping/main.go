@@ -7,8 +7,8 @@ import (
 )
 
 func main() {
-	g := gommando.New("ping -c 5 google.com")
-
+	g := gommando.New("ping -c 3 google.com")
+	g.Output(true)
 	g.Stdout().Once(func(haystack string) bool {
 		return strings.Index(haystack, "google") > 0
 	}).Then(func(s string) {

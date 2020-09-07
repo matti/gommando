@@ -1,8 +1,6 @@
 package main
 
 import (
-	"time"
-
 	"github.com/matti/gommando"
 )
 
@@ -17,6 +15,4 @@ func main() {
 	})
 
 	g.Run()
-	// TODO:
-	time.Sleep(time.Second * 1)
 }
