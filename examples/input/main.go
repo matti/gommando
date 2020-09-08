@@ -27,5 +27,4 @@ func main() {
 	})
 
 	g.Run()
-	time.Sleep(1 * time.Second)
 }
