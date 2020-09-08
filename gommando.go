@@ -1,6 +1,7 @@
 package gommando
 
 import (
+	"io"
 	"os"
 	"os/exec"
 	"syscall"
@@ -15,8 +16,8 @@ type Gommando struct {
 	out    *dynamicmultiwriter.DynamicMultiWriter
 	err    *dynamicmultiwriter.DynamicMultiWriter
 	both   *dynamicmultiwriter.DynamicMultiWriter
-
-	cmd *exec.Cmd
+	in     io.WriteCloser
+	cmd    *exec.Cmd
 }
 
 // New ...
@@ -30,6 +31,12 @@ func New(cmd string) *Gommando {
 	g.cmd = exec.Command("/usr/bin/env", "sh", "-c", cmd)
 	g.cmd.Stdout = g.out
 	g.cmd.Stderr = g.err
+
+	stdin, err := g.cmd.StdinPipe()
+	if err != nil {
+		panic(err)
+	}
+	g.in = stdin
 
 	return g
 }
@@ -70,6 +77,11 @@ func (g *Gommando) Stdboth() *chain.Chain {
 	g.chains = append(g.chains, c)
 
 	return c
+}
+
+// Stdin ...
+func (g *Gommando) Stdin() io.WriteCloser {
+	return g.in
 }
 
 // Run ...
