@@ -123,15 +123,11 @@ func (c *Chain) Every(needleFn func(haystack string) bool) *Chain {
 
 			if needleFn(string(b)) {
 				if c.next.next != nil {
-					// b will be overwritten, pass a copy
-					bcopy := make([]byte, len(b))
-					copy(bcopy, b)
-
 					wg.Add(1)
-					go func() {
-						c.next.next.fire(string(bcopy))
+					go func(b []byte) {
+						c.next.next.fire(string(b))
 						wg.Done()
-					}()
+					}(b)
 				}
 			}
 		}

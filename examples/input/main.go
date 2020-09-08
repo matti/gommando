@@ -20,8 +20,7 @@ func main() {
 		println("      writing it (robot)")
 		io.WriteString(g.Stdin(), "robot\n")
 	}).Once(func(haystack string) bool {
-		// TODO: why "hello robot" is false
-		return strings.Index(haystack, "ello robot") > 0
+		return strings.Index(haystack, "hello robot") >= 0
 	}).Then(func(s string) {
 		println("  ^-- now it greeted me", s)
 	})
