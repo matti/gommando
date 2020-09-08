@@ -3,6 +3,7 @@ package gommando
 import (
 	"os"
 	"os/exec"
+	"syscall"
 
 	"github.com/matti/dynamicmultiwriter"
 	"github.com/matti/gommando/internal/chain"
@@ -82,4 +83,14 @@ func (g *Gommando) Run() {
 	for _, c := range g.chains {
 		c.Close()
 	}
+}
+
+// Signal ...
+func (g *Gommando) Signal(signal syscall.Signal) {
+	syscall.Kill(g.cmd.Process.Pid, signal)
+}
+
+// Wait ...
+func (g *Gommando) Wait() {
+	g.cmd.Wait()
 }
