@@ -1,7 +1,8 @@
 # gommando
 
-Run any command and run hooks when the output (stdout, stderr or stdboth) matches
-Allows you to start scanning for strings like "error" *only* after something else has been seen.
+Run any command and run hooks when the output (stdout, stderr or stdboth) matches.
+
+Great for E2E testing of command line tools! Allows you to start scanning for strings like "error" *only* after something else has been seen.
 
 See [examples/input/main.go](examples/input/main.go) which outputs:
 
