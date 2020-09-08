@@ -2,9 +2,18 @@
 
 Run any command and run hooks when the output (stdout, stderr or stdboth) matches
 
-See [examples/ping/main.go](examples/ping/main.go)
+See [examples/input/main.go](examples/input/main.go) which outputs:
 
-which outputs:
+```
+$ go run examples/input/main.go
+Enter your name:
+  ^-- now it asks my name
+      writing it (robot)
+hello robot
+  ^-- now it greeted me hello robot
+```
+
+See [examples/ping/main.go](examples/ping/main.go) outputs:
 ```
 $ go run examples/ping/main.go
 PING google.com (172.217.20.46): 56 data bytes
