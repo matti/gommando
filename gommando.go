@@ -24,11 +24,6 @@ func New(cmd string) *Gommando {
 
 	g.out = dynamicmultiwriter.New()
 	g.err = dynamicmultiwriter.New()
-	g.both = dynamicmultiwriter.New()
-
-	g.err.Add(g.both)
-	g.out.Add(g.both)
-
 	g.Output(true)
 
 	g.cmd = exec.Command("/usr/bin/env", "sh", "-c", cmd)
@@ -66,7 +61,11 @@ func (g *Gommando) Stderr() *chain.Chain {
 
 // Stdboth ...
 func (g *Gommando) Stdboth() *chain.Chain {
-	c := chain.New(g.both, nil, nil)
+	both := dynamicmultiwriter.New()
+	g.err.Add(both)
+	g.out.Add(both)
+
+	c := chain.New(both, nil, nil)
 	g.chains = append(g.chains, c)
 
 	return c

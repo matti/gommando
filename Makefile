@@ -3,6 +3,7 @@ all: build examples
 
 .PHONY:
 build:
+	go mod tidy
 	docker build -t gommando .
 
 .PHONY:

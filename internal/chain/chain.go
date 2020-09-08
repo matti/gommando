@@ -43,8 +43,8 @@ func (c *Chain) Close() {
 	if c.next != nil {
 		c.next.Close()
 	}
-	c.writer.Close()
 
+	c.writer.Close()
 	c.wg.Wait()
 }
 
@@ -66,15 +66,10 @@ func New(stream *dynamicmultiwriter.DynamicMultiWriter, prev *Chain, next *Chain
 func (c *Chain) Once(needleFn func(haystack string) bool) *Chain {
 	c.next = New(c.Stream, c, nil)
 	c.next.once = func() {
-		defer func() {
-			c.next.Stream.Remove(c.next.writer)
-		}()
-
 		c.next.Stream.Add(c.next.writer)
 
+		b := make([]byte, 4<<20)
 		for {
-			// TODO: stdboth fails unless inside of for, why?
-			b := make([]byte, 4<<20)
 			_, err := c.next.reader.Read(b)
 
 			if err == io.EOF {
@@ -84,9 +79,15 @@ func (c *Chain) Once(needleFn func(haystack string) bool) *Chain {
 			}
 
 			if needleFn(string(b)) {
+				// no need to get any more data
+				c.next.Stream.Remove(c.next.writer)
+				c.next.reader.Close()
+				c.next.writer.Close()
+
 				if c.next.next != nil {
 					c.next.next.fire(string(b))
 				}
+
 				return
 			}
 		}
@@ -102,14 +103,17 @@ func (c *Chain) Every(needleFn func(haystack string) bool) *Chain {
 		wg := sync.WaitGroup{}
 
 		defer func() {
-			wg.Wait()
 			c.next.Stream.Remove(c.next.writer)
+			c.next.reader.Close()
+			// In Every already closed, but just want to be explicit
+			c.next.writer.Close()
+
+			wg.Wait()
 		}()
 
 		c.next.Stream.Add(c.next.writer)
-
+		b := make([]byte, 4<<20)
 		for {
-			b := make([]byte, 4<<20)
 			_, err := c.next.reader.Read(b)
 			if err == io.EOF {
 				return
@@ -118,13 +122,17 @@ func (c *Chain) Every(needleFn func(haystack string) bool) *Chain {
 			}
 
 			if needleFn(string(b)) {
-				wg.Add(1)
-				go func() {
-					if c.next.next != nil {
-						c.next.next.fire(string(b))
-					}
-					wg.Done()
-				}()
+				if c.next.next != nil {
+					// b will be overwritten, pass a copy
+					bcopy := make([]byte, len(b))
+					copy(bcopy, b)
+
+					wg.Add(1)
+					go func() {
+						c.next.next.fire(string(bcopy))
+						wg.Done()
+					}()
+				}
 			}
 		}
 	}
