@@ -19,7 +19,7 @@ type Chain struct {
 	writer *io.PipeWriter
 	reader *io.PipeReader
 
-	Stream *dynamicmultiwriter.DynamicMultiWriter
+	stream *dynamicmultiwriter.DynamicMultiWriter
 	wg     sync.WaitGroup
 }
 
@@ -53,7 +53,7 @@ func New(stream *dynamicmultiwriter.DynamicMultiWriter, prev *Chain, next *Chain
 	r, w := io.Pipe()
 
 	return &Chain{
-		Stream: stream,
+		stream: stream,
 		prev:   prev,
 		next:   next,
 		writer: w,
@@ -64,9 +64,9 @@ func New(stream *dynamicmultiwriter.DynamicMultiWriter, prev *Chain, next *Chain
 
 // Once ...
 func (c *Chain) Once(needleFn func(haystack string) bool) *Chain {
-	c.next = New(c.Stream, c, nil)
+	c.next = New(c.stream, c, nil)
 	c.next.once = func() {
-		c.next.Stream.Add(c.next.writer)
+		c.next.stream.Add(c.next.writer)
 
 		b := make([]byte, 4<<20)
 		for {
@@ -80,7 +80,7 @@ func (c *Chain) Once(needleFn func(haystack string) bool) *Chain {
 
 			if needleFn(string(b)) {
 				// no need to get any more data
-				c.next.Stream.Remove(c.next.writer)
+				c.next.stream.Remove(c.next.writer)
 				c.next.reader.Close()
 				c.next.writer.Close()
 
@@ -98,12 +98,12 @@ func (c *Chain) Once(needleFn func(haystack string) bool) *Chain {
 
 // Every ...
 func (c *Chain) Every(needleFn func(haystack string) bool) *Chain {
-	c.next = New(c.Stream, c, nil)
+	c.next = New(c.stream, c, nil)
 	c.next.every = func() {
 		wg := sync.WaitGroup{}
 
 		defer func() {
-			c.next.Stream.Remove(c.next.writer)
+			c.next.stream.Remove(c.next.writer)
 			c.next.reader.Close()
 			// In Every already closed, but just want to be explicit
 			c.next.writer.Close()
@@ -111,7 +111,7 @@ func (c *Chain) Every(needleFn func(haystack string) bool) *Chain {
 			wg.Wait()
 		}()
 
-		c.next.Stream.Add(c.next.writer)
+		c.next.stream.Add(c.next.writer)
 		b := make([]byte, 4<<20)
 		for {
 			_, err := c.next.reader.Read(b)
@@ -142,7 +142,7 @@ func (c *Chain) Every(needleFn func(haystack string) bool) *Chain {
 
 // Then ...
 func (c *Chain) Then(fn func(s string)) *Chain {
-	c.next = New(c.Stream, c, nil)
+	c.next = New(c.stream, c, nil)
 	c.next.then = fn
 
 	return c.next
