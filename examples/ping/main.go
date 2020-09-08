@@ -28,7 +28,6 @@ func main() {
 		println("  3 pings sent, exiting")
 		g.Signal(syscall.SIGTERM)
 		g.Wait()
-		println("  ping exited")
 	})
 
 	g.Stdout().Every(func(haystack string) bool {

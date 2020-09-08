@@ -1,6 +1,7 @@
 # gommando
 
 Run any command and run hooks when the output (stdout, stderr or stdboth) matches
+Allows you to start scanning for strings like "error" *only* after something else has been seen.
 
 See [examples/input/main.go](examples/input/main.go) which outputs:
 
@@ -11,6 +12,8 @@ Enter your name:
       writing it (robot)
 hello robot
   ^-- now it greeted me hello robot
+
+  exited with 0
 ```
 
 See [examples/ping/main.go](examples/ping/main.go) outputs:

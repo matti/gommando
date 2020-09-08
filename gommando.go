@@ -91,10 +91,14 @@ func (g *Gommando) Run() {
 	}
 
 	g.cmd.Run()
-
 	for _, c := range g.chains {
 		c.Close()
 	}
+}
+
+// ProcessState ...
+func (g *Gommando) ProcessState() *os.ProcessState {
+	return g.cmd.ProcessState
 }
 
 // Signal ...

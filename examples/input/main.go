@@ -26,4 +26,6 @@ func main() {
 	})
 
 	g.Run()
+
+	println("  Process exited with", g.ProcessState().ExitCode())
 }
