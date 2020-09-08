@@ -2,9 +2,9 @@
 
 Run any command and run hooks when the output (stdout, stderr or stdboth) matches.
 
-Great for E2E testing of command line tools! Allows you to start scanning for strings like "error" *only* after something else has been seen.
+Great for E2E testing of command line tools! Allows you to start scanning for strings like "error" *only* after something else has been seen. See E2E testing samples samples at [samples/](samples/).
 
-See [examples/input/main.go](examples/input/main.go) which outputs:
+For basic usage see [examples/input/main.go](examples/input/main.go) which outputs:
 
 ```
 $ go run examples/input/main.go
